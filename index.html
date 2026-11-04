@@ -2,37 +2,276 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>static dtv web nick</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f7f4">
+  <meta name="description" content="A private, on-device face verification demo.">
+  <title>Face Check</title>
   <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
+    :root {
+      color-scheme: light;
+      --ink: #17211d;
+      --muted: #75817a;
+      --line: #e5e9e4;
+      --green: #147b57;
+      --green-dark: #0f6547;
+      --green-pale: #e8f5ee;
+      --surface: #fff;
+      --page: #f6f7f4;
+      --danger: #b54646;
     }
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--page); }
     body {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background-color: #faf9f6;
-      color: #111111;
-      font-family: 'Poppins', sans-serif;
-      font-weight: 700;
+      min-height: 100svh;
+      margin: 0;
+      padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom));
+      color: var(--ink);
+      background: var(--page);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
     }
-    p {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 700;
-      font-size: clamp(24px, 4vw, 40px);
-      text-align: center;
-      padding: 24px;
-    }
+    button { font: inherit; }
+    .shell { width: min(100%, 450px); min-height: calc(100svh - 36px); margin: 0 auto; display: flex; flex-direction: column; }
+    .topbar { height: 48px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 700; letter-spacing: -.02em; }
+    .brand-mark { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; color: var(--green); background: var(--green-pale); }
+    .brand-mark svg { width: 17px; height: 17px; }
+    .secure { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 11px; font-weight: 600; }
+    .secure svg { width: 14px; height: 14px; color: var(--green); }
+    main { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 18px 0 24px; }
+    .heading { margin: 8px 0 22px; text-align: center; }
+    .step { margin: 0 0 9px; color: var(--green); font-size: 10px; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(27px, 7vw, 32px); line-height: 1.16; letter-spacing: -.055em; font-weight: 730; }
+    .subhead { max-width: 310px; margin: 10px auto 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+    .camera-card { overflow: hidden; position: relative; aspect-ratio: 4 / 4.3; max-height: 49svh; min-height: 260px; border-radius: 26px; background: #dfe6e0; box-shadow: 0 14px 40px rgba(27, 54, 40, .09); }
+    video, .capture-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    .capture-image { display: none; }
+    .camera-wash { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(180deg, rgba(11,24,17,.19), transparent 27%, transparent 75%, rgba(11,24,17,.20)); }
+    .frame { position: absolute; inset: 9% 16% 11%; border: 1.5px solid rgba(255,255,255,.83); border-radius: 48% 48% 42% 42% / 38% 38% 37% 37%; box-shadow: 0 0 0 999px rgba(13, 24, 17, .09); transition: border-color .2s, box-shadow .2s; pointer-events: none; }
+    .frame::after { content: ""; position: absolute; inset: 0; border: 1px solid rgba(255,255,255,.24); border-radius: inherit; transform: scale(.96); }
+    .frame.good { border-color: #aaf0ca; box-shadow: 0 0 0 999px rgba(13, 24, 17, .035), 0 0 24px rgba(83, 220, 147, .35); }
+    .camera-label { position: absolute; top: 14px; left: 14px; display: flex; align-items: center; gap: 7px; padding: 8px 10px; border: 1px solid rgba(255,255,255,.21); border-radius: 20px; color: #fff; background: rgba(18,32,24,.38); backdrop-filter: blur(10px); font-size: 10px; font-weight: 650; letter-spacing: .02em; }
+    .live-dot { width: 6px; height: 6px; border-radius: 50%; background: #74e1a7; box-shadow: 0 0 0 3px rgba(116,225,167,.18); }
+    .cam-error { position: absolute; inset: 0; display: none; place-items: center; padding: 28px; color: #fff; background: linear-gradient(145deg, #294136, #192a23); text-align: center; }
+    .cam-error.show { display: grid; }
+    .cam-error strong { display: block; margin-bottom: 8px; font-size: 17px; }
+    .cam-error span { color: rgba(255,255,255,.74); font-size: 12px; line-height: 1.55; }
+    .helper { min-height: 40px; padding: 12px 8px 10px; color: var(--muted); text-align: center; font-size: 12px; line-height: 1.45; }
+    .helper strong { color: var(--ink); font-weight: 650; }
+    .actions { display: grid; gap: 9px; }
+    .capture, .retry { width: 100%; min-height: 54px; display: flex; justify-content: center; align-items: center; gap: 10px; border: 0; border-radius: 16px; color: #fff; background: var(--green); box-shadow: 0 7px 16px rgba(20,123,87,.16); font-size: 14px; font-weight: 700; cursor: pointer; transition: background .18s, transform .18s, opacity .18s; touch-action: manipulation; }
+    .capture:hover, .retry:hover { background: var(--green-dark); }
+    .capture:active, .retry:active { transform: scale(.985); }
+    .capture:disabled { opacity: .52; cursor: not-allowed; }
+    .capture svg { width: 19px; height: 19px; }
+    .retry { display: none; color: var(--green); background: var(--green-pale); box-shadow: none; }
+    .retry:hover { background: #d9eee2; }
+    .privacy { max-width: 330px; display: flex; align-items: flex-start; justify-content: center; gap: 7px; margin: 14px auto 0; color: #87918a; font-size: 10px; line-height: 1.45; text-align: center; }
+    .privacy svg { width: 13px; height: 13px; flex: none; margin-top: 1px; }
+    .bottom { margin-top: auto; padding-top: 14px; color: #9aa39c; font-size: 10px; text-align: center; }
+    .bottom b { color: #69756e; font-weight: 650; }
+    .overlay { position: fixed; z-index: 5; inset: 0; display: none; align-items: flex-end; justify-content: center; padding: 16px 16px max(16px, env(safe-area-inset-bottom)); background: rgba(18,31,24,.48); backdrop-filter: blur(5px); }
+    .overlay.open { display: flex; animation: fade-in .22s ease-out; }
+    .sheet { width: min(100%, 450px); padding: 25px 22px 20px; border-radius: 25px; background: var(--surface); box-shadow: 0 18px 70px rgba(15,35,24,.25); animation: rise-in .28s cubic-bezier(.2,.8,.2,1); }
+    .sheet-top { display: flex; align-items: flex-start; gap: 13px; }
+    .result-icon { width: 43px; height: 43px; flex: none; display: grid; place-items: center; border-radius: 14px; color: var(--green); background: var(--green-pale); }
+    .result-icon svg { width: 22px; height: 22px; }
+    .result-tag { margin: 2px 0 5px; color: var(--green); font-size: 9px; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .sheet h2 { margin: 0; font-size: 21px; letter-spacing: -.04em; }
+    .result-copy { margin: 18px 0 14px; padding: 15px; border-radius: 14px; color: #34443a; background: #f4f7f3; font-size: 14px; line-height: 1.6; }
+    .result-copy strong { color: var(--ink); }
+    .device-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 1px 17px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .device-row b { color: var(--ink); font-weight: 700; }
+    .demo-note { margin: 14px 0 18px; color: #6e7b72; font-size: 11px; line-height: 1.5; }
+    .close { width: 100%; min-height: 50px; border: 0; border-radius: 15px; color: white; background: var(--green); font-size: 13px; font-weight: 700; cursor: pointer; }
+    .close:hover { background: var(--green-dark); }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @media (min-height: 820px) { .camera-card { max-height: 43svh; } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
   </style>
 </head>
 <body>
-  <p>static dtv web nick date october 30 lesgoooo</p>
+  <div class="shell">
+    <header class="topbar">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M8 5.5 9.2 4h5.6L16 5.5h2.5A2.5 2.5 0 0 1 21 8v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17V8a2.5 2.5 0 0 1 2.5-2.5H8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12.5" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg></span>Face Check</div>
+      <div class="secure"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5 6v5.3c0 4.5 2.9 7.8 7 9.7 4.1-1.9 7-5.2 7-9.7V6l-7-3Z" stroke="currentColor" stroke-width="1.7"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>Private session</div>
+    </header>
+    <main>
+      <section class="heading" aria-labelledby="title">
+        <p class="step">STEP 1 OF 1</p>
+        <h1 id="title">Verify your face</h1>
+        <p class="subhead">Center your face in the frame, then take a quick picture to continue.</p>
+      </section>
+      <section class="camera-card" aria-label="Live front camera preview">
+        <video id="camera" autoplay muted playsinline></video>
+        <img id="captureImage" class="capture-image" alt="Your captured face preview">
+        <div class="camera-wash" aria-hidden="true"></div>
+        <div class="frame" id="faceFrame" aria-hidden="true"></div>
+        <div class="camera-label"><span class="live-dot" aria-hidden="true"></span><span id="cameraLabel">Starting camera</span></div>
+        <div class="cam-error" id="cameraError"><div><strong>Camera unavailable</strong><span id="errorMessage">Allow camera access and reload the page to continue.</span></div></div>
+      </section>
+      <p class="helper" id="helper" aria-live="polite">Allow camera access when your browser asks.</p>
+      <div class="actions">
+        <button class="capture" id="captureButton" type="button" disabled>
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M8 5.5 9.2 4h5.6L16 5.5h2.5A2.5 2.5 0 0 1 21 8v9a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17V8a2.5 2.5 0 0 1 2.5-2.5H8Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12.5" r="3.4" stroke="currentColor" stroke-width="1.7"/></svg>
+          <span>Take picture</span>
+        </button>
+        <button class="retry" id="retryButton" type="button">Try again</button>
+      </div>
+      <p class="privacy"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>Your camera stays on this device. Pictures are not saved or uploaded.</p>
+    </main>
+    <footer class="bottom">Admin phone <b>Mom</b></footer>
+  </div>
+
+  <div class="overlay" id="resultOverlay" role="dialog" aria-modal="true" aria-labelledby="resultTitle">
+    <section class="sheet">
+      <div class="sheet-top">
+        <div class="result-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5 6v5.3c0 4.5 2.9 7.8 7 9.7 4.1-1.9 7-5.2 7-9.7V6l-7-3Z" stroke="currentColor" stroke-width="1.7"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div><p class="result-tag">Demo complete</p><h2 id="resultTitle">Face verified</h2></div>
+      </div>
+      <p class="result-copy"><strong>Successfully deactivated Wi-Fi.</strong><br>Sarah's Vivo phone: all networks interrupted.</p>
+      <div class="device-row"><span>Admin phone</span><b>Mom</b></div>
+      <p class="demo-note">This is a simulated on-screen result. No Wi-Fi, phone, or network settings were changed.</p>
+      <button class="close" id="closeResult" type="button">Done</button>
+    </section>
+  </div>
+
+  <script type="module">
+    const video = document.getElementById('camera');
+    const captureImage = document.getElementById('captureImage');
+    const captureButton = document.getElementById('captureButton');
+    const retryButton = document.getElementById('retryButton');
+    const helper = document.getElementById('helper');
+    const cameraLabel = document.getElementById('cameraLabel');
+    const cameraError = document.getElementById('cameraError');
+    const errorMessage = document.getElementById('errorMessage');
+    const faceFrame = document.getElementById('faceFrame');
+    const resultOverlay = document.getElementById('resultOverlay');
+    const closeResult = document.getElementById('closeResult');
+    let stream;
+    let detector;
+    let cameraReady = false;
+    let detectorReady = false;
+    let frameRequest;
+    let captured = false;
+
+    async function setupDetector() {
+      try {
+        const mp = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/vision_bundle.mjs');
+        const vision = await mp.FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
+        detector = await mp.FaceDetector.createFromOptions(vision, {
+          baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_detector/blaze_face_short_range/float16/1/blaze_face_short_range.tflite' },
+          runningMode: 'VIDEO',
+          minDetectionConfidence: 0.55
+        });
+        detectorReady = true;
+        captureButton.disabled = !cameraReady;
+        helper.textContent = 'Center one full face in the frame. Your photo stays on this device.';
+        cameraLabel.textContent = 'Face detector ready';
+      } catch (error) {
+        helper.textContent = 'Face detection could not load. Check your connection and reload to try again.';
+        cameraLabel.textContent = 'Detector unavailable';
+        captureButton.disabled = true;
+      }
+    }
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        errorMessage.textContent = 'Open this page on a secure HTTPS connection in a browser that supports camera access.';
+        cameraError.classList.add('show');
+        helper.textContent = 'Camera access requires a secure connection.';
+        return;
+      }
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 720 }, height: { ideal: 960 } }, audio: false });
+        video.srcObject = stream;
+        await video.play();
+        cameraReady = true;
+        cameraLabel.textContent = 'Checking framing';
+        captureButton.disabled = !detectorReady;
+        detectLoop();
+      } catch (error) {
+        errorMessage.textContent = error.name === 'NotAllowedError' ? 'Camera access was denied. Allow it in your browser settings and reload.' : 'We could not start your camera. Check that it is available, then reload this page.';
+        cameraError.classList.add('show');
+        helper.textContent = 'Allow camera access to continue.';
+      }
+    }
+
+    function detectLoop() {
+      if (!detector || !video.videoWidth || captured) {
+        frameRequest = requestAnimationFrame(detectLoop);
+        return;
+      }
+      try {
+        const result = detector.detectForVideo(video, performance.now());
+        const face = result.detections?.length === 1 ? result.detections[0].boundingBox : null;
+        const centered = face && face.width / video.videoWidth > .24 && face.width / video.videoWidth < .78 && face.height / video.videoHeight > .24 && face.originX > video.videoWidth * .06 && face.originX + face.width < video.videoWidth * .94 && face.originY > video.videoHeight * .04 && face.originY + face.height < video.videoHeight * .96;
+        faceFrame.classList.toggle('good', Boolean(centered));
+        cameraLabel.textContent = centered ? 'Face centered' : 'Checking framing';
+        helper.innerHTML = centered ? '<strong>Looking good.</strong> Keep still and tap below.' : 'Center one full face inside the outline.';
+      } catch (error) {
+        cameraLabel.textContent = 'Camera ready';
+      }
+      frameRequest = requestAnimationFrame(detectLoop);
+    }
+
+    function capture() {
+      if (!video.videoWidth || !detector || captured) return;
+      let detections;
+      try { detections = detector.detectForVideo(video, performance.now()).detections || []; } catch (error) { detections = []; }
+      if (detections.length !== 1) {
+        helper.textContent = detections.length > 1 ? 'Only one person should be in the frame.' : 'No face found. Center your full face in the frame and try again.';
+        return;
+      }
+      const box = detections[0].boundingBox;
+      const fullFace = box.width / video.videoWidth > .24 && box.width / video.videoWidth < .78 && box.height / video.videoHeight > .24 && box.originX > video.videoWidth * .06 && box.originX + box.width < video.videoWidth * .94 && box.originY > video.videoHeight * .04 && box.originY + box.height < video.videoHeight * .96;
+      if (!fullFace) {
+        helper.textContent = 'Move a little closer and keep your whole face centered in the outline.';
+        return;
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext('2d', { alpha: false });
+      context.translate(canvas.width, 0);
+      context.scale(-1, 1);
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      captureImage.src = canvas.toDataURL('image/jpeg', .86);
+      canvas.width = canvas.height = 0;
+      captured = true;
+      cancelAnimationFrame(frameRequest);
+      captureImage.style.display = 'block';
+      video.style.display = 'none';
+      cameraLabel.textContent = 'Picture captured';
+      helper.textContent = 'Face detected. Preparing your result…';
+      captureButton.style.display = 'none';
+      retryButton.style.display = 'flex';
+      stream?.getTracks().forEach(track => track.stop());
+      setTimeout(() => resultOverlay.classList.add('open'), 500);
+    }
+
+    function reset() {
+      captured = false;
+      resultOverlay.classList.remove('open');
+      captureImage.removeAttribute('src');
+      captureImage.style.display = 'none';
+      video.style.display = 'block';
+      captureButton.style.display = 'flex';
+      retryButton.style.display = 'none';
+      faceFrame.classList.remove('good');
+      helper.textContent = 'Center one full face inside the outline.';
+      startCamera();
+    }
+
+    captureButton.addEventListener('click', capture);
+    retryButton.addEventListener('click', reset);
+    closeResult.addEventListener('click', () => resultOverlay.classList.remove('open'));
+    resultOverlay.addEventListener('click', event => { if (event.target === resultOverlay) resultOverlay.classList.remove('open'); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape') resultOverlay.classList.remove('open'); });
+    window.addEventListener('pagehide', () => stream?.getTracks().forEach(track => track.stop()));
+    setupDetector();
+    startCamera();
+  </script>
 </body>
 </html>
